@@ -88,9 +88,9 @@ internal class HAEntityTests: XCTestCase {
         XCTAssertEqual(entity.attributes.friendlyName, "muffin")
         XCTAssertEqual(entity.attributes["icon"] as? String, "mdi:light")
         XCTAssertEqual(entity.attributes.icon, "mdi:light")
-        XCTAssertEqual(entity.context.id, "27f121fd8bfa49f92f7094d8cb3eb2c1")
-        XCTAssertNil(entity.context.parentId)
-        XCTAssertNil(entity.context.userId)
+        XCTAssertEqual(entity.context?.id, "27f121fd8bfa49f92f7094d8cb3eb2c1")
+        XCTAssertNil(entity.context?.parentId)
+        XCTAssertNil(entity.context?.userId)
 
         let changed = Calendar.current.dateComponents(
             in: TimeZone(identifier: "UTC")!,
