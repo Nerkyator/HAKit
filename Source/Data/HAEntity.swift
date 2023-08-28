@@ -15,7 +15,7 @@ public struct HAEntity: HADataDecodable, Hashable {
     /// Attributes of the entity
     public var attributes: HAEntityAttributes
     /// Context of the entity's last update
-    public var context: HAResponseEvent.Context
+    public var context: HAResponseEvent.Context?
 
     /// Create an entity from a data response
     /// - Parameter data: The data to create from
@@ -36,7 +36,7 @@ public struct HAEntity: HADataDecodable, Hashable {
             lastChanged: try data.decode("last_changed"),
             lastUpdated: try data.decode("last_updated"),
             attributes: try data.decode("attributes"),
-            context: try data.decode("context")
+            context: try? data.decode("context")
         )
     }
 
@@ -57,7 +57,7 @@ public struct HAEntity: HADataDecodable, Hashable {
         lastChanged: Date,
         lastUpdated: Date,
         attributes: [String: Any],
-        context: HAResponseEvent.Context
+        context: HAResponseEvent.Context? = nil
     ) throws {
         precondition(entityId.starts(with: domain))
         self.entityId = entityId
