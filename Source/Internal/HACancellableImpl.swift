@@ -10,3 +10,4 @@ internal class HACancellableImpl: HACancellable {
         handler = nil
     }
 }
+

@@ -6,7 +6,7 @@ import PackageDescription
 public let package = Package(
     name: "HAKit",
     platforms: [
-        .iOS(.v12),
+        .iOS(.v13),
         .macOS(.v10_14),
         .tvOS(.v12),
         .watchOS(.v5),
@@ -19,10 +19,6 @@ public let package = Package(
     ],
     dependencies: [
         .package(
-            url: "https://github.com/daltoniam/Starscream",
-            from: "4.0.4"
-        ),
-        .package(
             url: "https://github.com/mxcl/PromiseKit",
             from: "6.13.2"
         ),
@@ -30,9 +26,7 @@ public let package = Package(
     targets: [
         .target(
             name: "HAKit",
-            dependencies: [
-                .byName(name: "Starscream"),
-            ],
+            dependencies: [ ],
             path: "Source"
         ),
         .target(

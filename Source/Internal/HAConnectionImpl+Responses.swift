@@ -1,10 +1,3 @@
-import Starscream
-
-extension HAConnectionImpl: Starscream.WebSocketDelegate {
-    func didReceive(event: WebSocketEvent, client: WebSocket) {
-        responseController.didReceive(event: event)
-    }
-}
 
 extension HAConnectionImpl {
     private func sendAuthToken() {
@@ -34,8 +27,8 @@ extension HAConnectionImpl: HAResponseControllerDelegate {
     ) {
         switch response {
         case .auth:
-            // we send auth token pre-emptively, so we don't need to care about the messages for auth
-            // note that we do watch for auth->command phase change so we can re-activate pending requests
+            sendAuthToken()
+            notifyState()
             break
         case let .event(identifier: identifier, data: data):
             if let subscription = requestController.subscription(for: identifier) {
@@ -70,8 +63,9 @@ extension HAConnectionImpl: HAResponseControllerDelegate {
     ) {
         switch phase {
         case .auth:
-            sendAuthToken()
-            notifyState()
+            break
+//            sendAuthToken()
+//            notifyState()
         case .command:
             reconnectManager.didFinishConnect()
             requestController.prepare()

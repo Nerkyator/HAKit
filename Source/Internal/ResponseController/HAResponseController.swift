@@ -1,5 +1,5 @@
 import Foundation
-import Starscream
+
 
 internal protocol HAResponseControllerDelegate: AnyObject {
     func responseController(
@@ -36,11 +36,12 @@ internal protocol HAResponseController: AnyObject {
     var phase: HAResponseControllerPhase { get }
 
     func reset()
-    func didReceive(event: Starscream.WebSocketEvent)
     func didReceive(
         for identifier: HARequestIdentifier,
         response: Result<(HTTPURLResponse, Data?), Error>
     )
+    func manageMessage(_ message: URLSessionWebSocketTask.Message)
+    
 }
 
 internal class HAResponseControllerImpl: HAResponseController {
@@ -59,71 +60,65 @@ internal class HAResponseControllerImpl: HAResponseController {
     func reset() {
         phase = .disconnected(error: nil, forReset: true)
     }
+    
+    func manageMessage(_ message: URLSessionWebSocketTask.Message) {
+        switch message {
+            
+        case .data( _):
+            HAGlobal.log(.error, "Failed. Received data format. Expected String")
+            
+        case .string(let strMessage):
+            
+            if strMessage.contains("auth_required") {
+                self.phase = .auth
+            }
+            
+            self.manageString(strMessage)
+            
+        @unknown default:
+            fatalError("Failed. Received unknown data format. Expected String")
+        }
+    }
+    
+    private func manageString(_ string: String) {
+        workQueue.async { [self] in
+            let response: HAWebSocketResponse
 
-    func didReceive(event: Starscream.WebSocketEvent) {
-        switch event {
-        case let .connected(headers):
-            HAGlobal.log(.info, "connected with headers: \(headers)")
-            phase = .auth
-        case let .disconnected(reason, code):
-            HAGlobal.log(.info, "disconnected: \(reason) with code: \(code)")
-            phase = .disconnected(error: nil, forReset: false)
-        case let .text(string):
-            workQueue.async { [self] in
-                let response: HAWebSocketResponse
+            do {
+                // https://forums.swift.org/t/can-encoding-string-to-data-with-utf8-fail/22437/4
+                let data = string.data(using: .utf8)!
 
-                do {
-                    // https://forums.swift.org/t/can-encoding-string-to-data-with-utf8-fail/22437/4
-                    let data = string.data(using: .utf8)!
-
-                    guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
-                        throw HAError.internal(debugDescription: "couldn't convert to dictionary")
-                    }
-
-                    response = try HAWebSocketResponse(dictionary: json)
-                } catch {
-                    HAGlobal.log(.error, "text parse error: \(error)")
-                    return
+                guard let json = try JSONSerialization.jsonObject(with: data, options: []) as? [String: Any] else {
+                    throw HAError.internal(debugDescription: "couldn't convert to dictionary")
                 }
 
-                switch response {
-                case let .auth(state):
-                    HAGlobal.log(.info, "Received: auth: \(state)")
-                case let .event(identifier: identifier, data: _):
-                    HAGlobal.log(.info, "Received: event: for \(identifier)")
-                case let .result(identifier: identifier, result: result):
-                    switch result {
-                    case .success:
-                        HAGlobal.log(.info, "Received: result success \(identifier)")
-                    case let .failure(error):
-                        HAGlobal.log(.info, "Received: result failure \(identifier): \(error) via \(string)")
-                    }
-                }
+                response = try HAWebSocketResponse(dictionary: json)
+            } catch {
+                HAGlobal.log(.error, "text parse error: \(error)")
+                return
+            }
 
-                DispatchQueue.main.async { [self] in
-                    if case let .auth(.ok(version)) = response {
-                        phase = .command(version: version)
-                    }
-
-                    delegate?.responseController(self, didReceive: response)
+            switch response {
+            case let .auth(state):
+                HAGlobal.log(.info, "Received: auth: \(state)")
+            case let .event(identifier: identifier, data: _):
+                HAGlobal.log(.info, "Received: event: for \(identifier)")
+            case let .result(identifier: identifier, result: result):
+                switch result {
+                case .success:
+                    HAGlobal.log(.info, "Received: result success \(identifier)")
+                case let .failure(error):
+                    HAGlobal.log(.info, "Received: result failure \(identifier): \(error) via \(string)")
                 }
             }
-        case let .binary(data):
-            HAGlobal.log(.info, "Received binary data: \(data.count)")
-        case .ping:
-            HAGlobal.log(.info, "Ping")
-        case .pong:
-            HAGlobal.log(.info, "Pong")
-        case let .reconnectSuggested(isSuggested):
-            HAGlobal.log(.info, "Reconnect suggested: \(isSuggested)")
-        case let .viabilityChanged(isViable):
-            HAGlobal.log(.info, "Viability changed: \(isViable)")
-        case .cancelled:
-            HAGlobal.log(.info, "Cancelled")
-            phase = .disconnected(error: nil, forReset: false)
-        case let .error(error):
-            HAGlobal.log(.error, "Error: \(String(describing: error))")
-            phase = .disconnected(error: error, forReset: false)
+
+            DispatchQueue.main.async { [self] in
+                if case let .auth(.ok(version)) = response {
+                    phase = .command(version: version)
+                }
+
+                delegate?.responseController(self, didReceive: response)
+            }
         }
     }
 

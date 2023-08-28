@@ -1,5 +1,4 @@
 import Foundation
-import Starscream
 
 // NOTE: see HAConnection.swift for how to access these types
 
@@ -39,20 +38,29 @@ internal class HAConnectionImpl: HAConnection {
         }
     }
 
-    internal private(set) var connection: WebSocket? {
+    internal private(set) var connection: SocketStream? {
         didSet {
-            connection?.delegate = self
-
             if oldValue !== connection {
-                oldValue?.disconnect(closeCode: CloseCode.goingAway.rawValue)
-                responseController.reset()
-                connection?.connect()
+                Task {
+                    try? await oldValue?.cancel()
+                    responseController.reset()
+
+                    guard let connection = self.connection else {
+                        disconnect(permanently: false, error: ConnectError.noConnection)
+                        return
+                    }
+                    
+                    for try await message in connection {
+                        self.responseController.manageMessage(message)
+                    }
+                }
             }
         }
     }
 
     internal enum ConnectError: Error {
         case noConnectionInfo
+        case noConnection
     }
 
     let requestController: HARequestController
@@ -140,7 +148,7 @@ internal class HAConnectionImpl: HAConnection {
 
         setupResubscribeEvents()
 
-        let connection: WebSocket = {
+        let connection: SocketStream = {
             guard let existing = self.connection else {
                 return connectionInfo.webSocket()
             }
@@ -173,10 +181,11 @@ internal class HAConnectionImpl: HAConnection {
 
         HAGlobal.log(.info, "disconnecting; permanently: \(permanently), error: \(String(describing: error))")
 
-        connection?.delegate = nil
-        connection?.disconnect(closeCode: CloseCode.goingAway.rawValue)
-        connection = nil
-
+        Task {
+            try? await connection?.cancel()
+            connection = nil
+        }
+        
         if permanently {
             reconnectManager.didDisconnectPermanently()
         } else {
@@ -335,7 +344,13 @@ extension HAConnectionImpl {
                 HAGlobal.log(.info, "Sending: \(string)")
             }
 
-            connection?.write(string: string)
+            Task {
+                do {
+                    try await connection?.send(string)
+                } catch {
+                    HAGlobal.log(.error, "Error on sending message: \(error)")
+                }
+            }
         }
     }
 
