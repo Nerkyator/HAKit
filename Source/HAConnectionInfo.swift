@@ -45,11 +45,7 @@ public struct HAConnectionInfo: Equatable {
             return URL(string: "")!
         }
         
-        if scheme == "https" || scheme == "wss" {
-            components.scheme = "wss"
-        } else {
-            components.scheme = "ws"
-        }
+        components.scheme = scheme == "https" || scheme == "wss" ? "wss" : "ws"
         
         guard var newUrl = components.url else {
             return URL(string: "")!
