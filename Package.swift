@@ -7,7 +7,7 @@ public let package = Package(
     name: "HAKit",
     platforms: [
         .iOS(.v13),
-        .macOS(.v10_14),
+        .macOS(.v10_15),
         .tvOS(.v12),
         .watchOS(.v5),
     ],

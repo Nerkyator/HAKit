@@ -29,10 +29,11 @@ The refactoring of HAKit has resulted in several benefits:
 
 ## Notes
 The implementation needed min iOS version to be increased from 12 to 13.
+The implementation needed min macOS version to be increased from v10_14 to v10_15.
 
 ## Further improvements
 
  - Some tests are commented out because of StarScream dependency. Should be better to re-introduce connection and responses handler tests to improve code quality.
- - The new HAKit version has been tested only on iOS. Should worth a try on macOS (probably min macOS version should be increased too)
+ - ~~The new HAKit version has been tested only on iOS. Should worth a try on macOS (probably min macOS version should be increased too)~~ see notes
  - Secure connection (https/wss) is fully supported but self signed certificate custom validation is not yet implemented (as it was Starscream version).
 
