@@ -231,3 +231,57 @@
 //        XCTAssertEqual(connectionInfo.webSocket().request.url, url.appendingPathComponent("api/websocket"))
 //    }
 //}
+
+@testable import HAKit
+import XCTest
+
+class HAConnectionInfoTests: XCTestCase {
+
+    // Test case for creating a valid HAConnectionInfo
+    func testValidInitialization() {
+        let url = URL(string: "https://example.com:8123")!
+        XCTAssertNoThrow(try HAConnectionInfo(url: url))
+    }
+    
+    // Test case for creating an HAConnectionInfo with an empty hostname
+    func testEmptyHostnameError() {
+        let url = URL(string: "https://:8123")!
+        XCTAssertThrowsError(try HAConnectionInfo(url: url)) { error in
+            XCTAssertEqual(error as? HAConnectionInfo.CreationError, .emptyHostname)
+        }
+    }
+    
+    // Test case for creating an HAConnectionInfo with an invalid port
+    func testInvalidPortError() {
+        let url = URL(string: "https://example.com:65536")!
+        XCTAssertThrowsError(try HAConnectionInfo(url: url)) { error in
+            XCTAssertEqual(error as? HAConnectionInfo.CreationError, .invalidPort)
+        }
+    }
+    
+    // Test case for creating a URLRequest using the request(url:) method
+    func testRequestWithURL() {
+        let url = URL(string: "https://example.com:8123")!
+        let connectionInfo = try! HAConnectionInfo(url: url)
+        let request = connectionInfo.request(url: url)
+        
+        XCTAssertEqual(request.url, url)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), nil) // No user agent set
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Host"), "example.com:8123")
+    }
+    
+    // Test case for creating a URLRequest using the request(path:queryItems:) method
+    func testRequestWithPathAndQueryItems() {
+        let baseURL = URL(string: "https://example.com:8123")!
+        let connectionInfo = try! HAConnectionInfo(url: baseURL)
+        
+        let path = "api/somepath"
+        let queryItems = [URLQueryItem(name: "param1", value: "value1")]
+        
+        let request = connectionInfo.request(path: path, queryItems: queryItems)
+        
+        XCTAssertEqual(request.url?.absoluteString, "https://example.com:8123/api/somepath?param1=value1")
+        XCTAssertEqual(request.value(forHTTPHeaderField: "User-Agent"), nil) // No user agent set
+        XCTAssertEqual(request.value(forHTTPHeaderField: "Host"), "example.com:8123")
+    }
+}
